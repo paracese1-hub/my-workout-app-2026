@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>내 운동 앱</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f5f8;color:#182235;font-family:system-ui,sans-serif;padding-bottom:75px}header{background:#172b4d;color:white;padding:20px}main{max-width:700px;margin:auto;padding:14px}.card{background:white;border:1px solid #e2e7ef;border-radius:14px;padding:15px;margin:12px 0}button{border:0;border-radius:9px;padding:10px 13px;background:#315b9a;color:white;font-weight:700;margin:3px}button.alt{background:#eaf0f8;color:#243b5d}nav{position:fixed;bottom:0;background:white;width:100%;display:flex;justify-content:space-around;padding:9px 0;border-top:1px solid #ddd}nav button{background:none;color:#345}input,select,textarea{padding:10px;border:1px solid #ccd5e2;border-radius:8px;font:inherit;width:100%;margin:4px 0}label{font-size:12px;color:#667}small{color:#667}.row{display:flex;gap:8px}.row>*{flex:1}.muted{color:#667;font-size:13px}.set{display:grid;grid-template-columns:35px 1fr 1fr 55px;gap:5px;align-items:center;margin:7px 0}.musclegrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.bodymap{width:100%;max-width:220px;margin:auto;display:block}.muscle{stroke:#fff;stroke-width:2}.legend{display:flex;gap:5px;align-items:center;flex-wrap:wrap;font-size:11px;color:#667}.swatch{width:13px;height:13px;border-radius:3px;display:inline-block}
+</style>
+<header><b>내 운동 앱</b><div class="muted" style="color:#d5deeb">홈트와 헬스장 운동을 따로 관리</div></header><main id="app"></main>
+<nav><button onclick="tab='home';draw()">홈</button><button onclick="tab='routine';draw()">내 루틴</button><button onclick="tab='work';draw()">운동하기</button><button onclick="tab='records';draw()">기록</button><button onclick="tab='body';draw()">몸 관리</button><button onclick="tab='muscle';draw()">근육 지도</button></nav>
+<script>
+const KEY='myWorkoutAppFreshV1';
+const base={mode:'home',routines:[],sessions:[],body:[],ex:{
+home:[['덤벨 벤치프레스','가슴'],['인클라인 덤벨프레스','가슴'],['원암 덤벨로우','등'],['덤벨 스쿼트','하체'],['덤벨 루마니안 데드리프트','하체'],['덤벨 숄더프레스','어깨'],['사이드 레터럴 레이즈','어깨'],['덤벨 컬','팔'],['오버헤드 트라이셉스 익스텐션','팔'],['크런치','복근']],
+gym:[['바벨 벤치프레스','가슴'],['케이블 플라이','가슴'],['랫풀다운','등'],['시티드 케이블로우','등'],['레그프레스','하체'],['레그컬','하체'],['머신 숄더프레스','어깨'],['케이블 푸시다운','팔']]}};
+let d;try{d={...base,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{d=structuredClone(base)}
+let tab='home',session=null;
+const save=()=>localStorage.setItem(KEY,JSON.stringify(d));
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function mode(m){d.mode=m;save();draw()}
+function draw(){let a=document.getElementById('app'),rs=d.routines.filter(x=>x.mode===d.mode);
+if(tab==='home')a.innerHTML=`<div class="card"><h2>오늘 운동</h2><p class="muted">현재 모드: ${d.mode==='home'?'홈트':'헬스장'}</p><button onclick="mode('home')">홈트</button><button onclick="mode('gym')">헬스장</button><p>누적 운동 ${d.sessions.length}회 · 저장 루틴 ${rs.length}개</p><p class="muted">홈트 장비: 조절식 덤벨 2개(각 25kg), 조절식 벤치</p><button onclick="tab='work';draw()">운동 시작</button></div>`;
+if(tab==='routine')a.innerHTML=`<h2>내 루틴 · ${d.mode==='home'?'홈트':'헬스장'}</h2><button onclick="mode('home')">홈트</button><button onclick="mode('gym')">헬스장</button><button onclick="makeRoutine()">＋ 루틴 만들기</button>${rs.map(r=>`<div class="card"><b>${esc(r.name)}</b><p class="muted">${r.items.map(x=>esc(x.name)+' '+x.sets+'세트×'+x.reps+'회').join('<br>')}</p><button onclick="start('${r.id}')">시작</button><button class="alt" onclick="edit('${r.id}')">수정</button><button class="alt" onclick="del('${r.id}')">삭제</button></div>`).join('')||'<div class="card">저장된 루틴이 없습니다.</div>'}`;
+if(tab==='work')a.innerHTML=session?`<h2>${esc(session.name)}</h2>${session.items.map((x,i)=>`<div class="card"><b>${esc(x.name)}</b>${x.setsData.map((s,j)=>`<div class="set">${j+1}세트<input type="number" value="${s.w}" placeholder="kg" onchange="session.items[${i}].setsData[${j}].w=+this.value"><input type="number" value="${s.r}" placeholder="회" onchange="session.items[${i}].setsData[${j}].r=+this.value"><input type="checkbox" ${s.done?'checked':''} onchange="session.items[${i}].setsData[${j}].done=this.checked"></div>`).join('')}<button class="alt" onclick="addSet(${i})">세트 추가</button></div>`).join('')}<div class="card"><textarea id="memo" placeholder="운동 메모"></textarea><button onclick="finish()">기록 저장</button></div>`:`<h2>운동하기</h2><div class="card"><button onclick="mode('home')">홈트</button><button onclick="mode('gym')">헬스장</button><h3>저장 루틴</h3><select id="sel"><option value="">루틴 선택</option>${rs.map(r=>`<option value="${r.id}">${esc(r.name)}</option>`).join('')}</select><button onclick="let r=d.routines.find(x=>x.id===sel.value);if(r)start(r.id);else alert('루틴을 선택하세요')">선택 루틴 시작</button><hr><h3>운동 직접 구성</h3>${d.ex[d.mode].map((x,i)=>`<label><input type="checkbox" class="pick" value="${i}"> ${esc(x[0])}</label>`).join('')}<button onclick="freeStart()">선택 운동 시작</button></div>`;
+if(tab==='records')a.innerHTML=`<h2>운동 기록</h2>${d.sessions.slice().reverse().map(s=>`<div class="card"><b>${esc(s.name)}</b><p class="muted">${s.date} · ${s.items.map(x=>esc(x.name)).join(', ')}</p>${s.items.map(x=>`<small>${esc(x.name)}: ${x.setsData.map(y=>y.w+'kg×'+y.r+(y.done?' ✓':'')).join(' / ')}</small><br>`).join('')}</div>`).join('')||'<div class="card">아직 기록이 없습니다.</div>'}<div class="card"><button onclick="backup()">백업 파일 저장</button><label>백업 불러오기<input type="file" accept="application/json" onchange="restore(event)"></label></div>`;
+if(tab==='muscle')a.innerHTML=muscleView();
+if(tab==='body')a.innerHTML=`<h2>몸 관리</h2><div class="card"><label>측정일</label><input id="date" type="date" value="${new Date().toISOString().slice(0,10)}"><label>체중(kg)</label><input id="weight" type="number" step=".1"><label>허리둘레(cm, 선택)</label><input id="waist" type="number" step=".1"><button onclick="bodySave()">측정 저장</button></div><div class="card"><h3>측정 기록</h3>${d.body.map(x=>`<p>${x.date} · ${x.weight}kg · ${x.waist||'-'}cm</p>`).join('')||'기록이 없습니다.'}</div>`;
+}
+function makeRoutine(old){let name=prompt('루틴 이름',old?.name||'새 루틴');if(name===null)return;let list=d.ex[d.mode],nums=prompt('운동 번호를 쉼표로 입력\n'+list.map((x,i)=>(i+1)+'. '+x[0]).join('\n'),old?old.items.map(x=>list.findIndex(y=>y[0]===x.name)+1).join(','):'');if(nums===null)return;let items=nums.split(',').map(n=>list[+n.trim()-1]).filter(Boolean).map(x=>{let p=old?.items.find(y=>y.name===x[0]);return {name:x[0],group:x[1],sets:+(prompt(x[0]+' 세트 수',p?.sets||3)||3),reps:+(prompt(x[0]+' 반복 수',p?.reps||10)||10)}});if(!items.length)return alert('운동을 선택하세요');let r={id:old?.id||crypto.randomUUID(),name,mode:d.mode,items};d.routines=old?d.routines.map(x=>x.id===r.id?r:x):[...d.routines,r];save();draw()}
+function edit(id){makeRoutine(d.routines.find(x=>x.id===id))}function del(id){if(confirm('루틴을 삭제할까요?')){d.routines=d.routines.filter(x=>x.id!==id);save();draw()}}
+function start(id){let r=d.routines.find(x=>x.id===id);session={name:r.name,items:r.items.map(x=>({...x,setsData:Array.from({length:x.sets},()=>({w:0,r:x.reps,done:false}))}))};tab='work';draw()}
+function freeStart(){let ids=[...document.querySelectorAll('.pick:checked')].map(x=>+x.value);if(!ids.length)return alert('운동을 선택하세요');session={name:'자유 운동',items:ids.map(i=>{let x=d.ex[d.mode][i];return {name:x[0],group:x[1],setsData:Array.from({length:3},()=>({w:0,r:10,done:false}))}})};draw()}
+function addSet(i){session.items[i].setsData.push({w:0,r:10,done:false});draw()}
+function finish(){d.sessions.push({date:new Date().toISOString().slice(0,10),mode:d.mode,name:session.name,items:session.items,memo:document.getElementById('memo').value});session=null;save();tab='records';draw();alert('운동 기록을 저장했습니다.')}
+
+function weekStart(){let n=new Date(),day=(n.getDay()+6)%7;n.setDate(n.getDate()-day);n.setHours(0,0,0,0);return n.toISOString().slice(0,10)}
+function muscleView(){
+let start=weekStart(),groups={가슴:0,등:0,어깨:0,팔:0,하체:0,복근:0};
+d.sessions.filter(s=>s.date>=start).forEach(s=>s.items.forEach(it=>{let v=(it.setsData||[]).reduce((a,x)=>a+(Number(x.w)||0)*(Number(x.r)||0),0);groups[it.group]=(groups[it.group]||0)+Math.max(v,(it.setsData||[]).filter(x=>x.done).length*10)}));
+let max=Math.max(1,...Object.values(groups));
+let color=g=>{let v=groups[g]||0;if(!v)return '#e8ebef';let n=v/max;return n>.75?'#ad263d':n>.45?'#d34b60':n>.2?'#eb929c':'#f6c4ca'};
+const shape=(back)=>{
+const common=`<defs><linearGradient id="skin${back?'b':'f'}" x1="0" x2="1"><stop stop-color="#e5e8ec"/><stop offset=".5" stop-color="#f5f6f7"/><stop offset="1" stop-color="#dfe3e8"/></linearGradient></defs>
+<g fill="url(#skin${back?'b':'f'})" stroke="#cbd1d9" stroke-width="1.4" stroke-linejoin="round">
+<path d="M79 40 Q90 35 101 40 L104 53 Q119 54 132 64 Q141 71 145 92 L153 121 Q155 131 146 135 L139 130 L134 103 L137 158 Q138 171 128 179 L121 185 L116 222 L108 222 L105 183 L75 183 L72 222 L64 222 L59 185 L52 179 Q42 171 43 158 L46 103 L41 130 L34 135 Q25 131 27 121 L35 92 Q39 71 48 64 Q61 54 76 53Z"/>
+<path d="M59 181 Q72 178 89 183 L86 220 Q83 239 80 258 L75 267 L59 260 Q54 238 54 218Z M91 183 Q108 178 121 181 L126 218 Q126 238 121 260 L105 267 L100 258 Q97 239 94 220Z"/>
+<path d="M59 260 Q68 263 77 264 L74 310 Q73 323 66 329 L55 326 Q52 316 54 302Z M103 264 Q112 263 121 260 L126 302 Q128 316 125 326 L114 329 Q107 323 106 310Z"/>
+</g><circle cx="90" cy="23" r="17" fill="url(#skin${back?'b':'f'})" stroke="#cbd1d9" stroke-width="1.4"/><path d="M82 39 Q90 44 98 39" fill="none" stroke="#cbd1d9"/>`;
+const front=`<g stroke="#fff" stroke-width="1.5" stroke-linejoin="round">
+<!-- deltoids -->
+<path fill="${color('어깨')}" d="M47 68 Q55 56 72 57 Q78 63 74 78 Q67 89 54 91 Q45 86 43 79Z"/><path fill="${color('어깨')}" d="M133 68 Q125 56 108 57 Q102 63 106 78 Q113 89 126 91 Q135 86 137 79Z"/>
+<!-- pectorals -->
+<path fill="${color('가슴')}" d="M72 77 Q81 70 89 76 Q91 84 88 97 Q82 105 67 103 Q58 99 59 89 Q63 81 72 77Z"/><path fill="${color('가슴')}" d="M108 77 Q99 70 91 76 Q89 84 92 97 Q98 105 113 103 Q122 99 121 89 Q117 81 108 77Z"/>
+<!-- biceps / forearms -->
+<path fill="${color('팔')}" d="M44 88 Q51 84 58 91 L55 111 Q51 121 45 130 L37 125 L39 108Z M136 88 Q129 84 122 91 L125 111 Q129 121 135 130 L143 125 L141 108Z"/><path fill="${color('팔')}" d="M38 130 Q45 127 51 134 L48 166 Q44 176 37 174 L33 164Z M142 130 Q135 127 129 134 L132 166 Q136 176 143 174 L147 164Z"/>
+<!-- rectus abdominis -->
+<path fill="${color('복근')}" d="M78 106 Q90 109 102 106 L101 121 Q90 124 79 121Z M78 124 Q90 127 102 124 L102 139 Q90 142 78 139Z M77 142 Q90 145 103 142 L104 157 Q90 160 76 157Z M76 160 Q90 163 104 160 L105 172 Q90 176 75 172Z"/>
+<!-- obliques -->
+<path fill="${color('복근')}" d="M62 106 Q69 108 76 107 L74 151 Q69 160 62 158 L58 128Z M118 106 Q111 108 104 107 L106 151 Q111 160 118 158 L122 128Z" opacity=".85"/>
+<!-- quadriceps -->
+<path fill="${color('하체')}" d="M59 185 Q70 181 86 186 L84 209 Q81 229 73 248 Q67 254 59 247 Q54 224 55 204Z M121 185 Q110 181 94 186 L96 209 Q99 229 107 248 Q113 254 121 247 Q126 224 125 204Z"/>
+<!-- calves -->
+<path fill="${color('하체')}" d="M58 263 Q66 265 76 265 L73 302 Q70 316 65 322 L56 319 Q54 302 55 286Z M122 263 Q114 265 104 265 L107 302 Q110 316 115 322 L124 319 Q126 302 125 286Z" opacity=".9"/>
+</g>`;
+const rear=`<g stroke="#fff" stroke-width="1.5" stroke-linejoin="round">
+<!-- rear deltoids -->
+<path fill="${color('어깨')}" d="M47 68 Q55 56 72 57 Q78 64 73 80 Q65 91 53 91 Q44 85 43 78Z"/><path fill="${color('어깨')}" d="M133 68 Q125 56 108 57 Q102 64 107 80 Q115 91 127 91 Q136 85 137 78Z"/>
+<!-- trapezius -->
+<path fill="${color('등')}" d="M77 57 Q90 64 103 57 L112 76 L100 99 L90 107 L80 99 L68 76Z"/>
+<!-- lats -->
+<path fill="${color('등')}" d="M68 91 Q77 97 86 101 L83 137 Q76 148 64 143 L56 119Z M112 91 Q103 97 94 101 L97 137 Q104 148 116 143 L124 119Z"/>
+<!-- lower back -->
+<path fill="${color('등')}" d="M84 105 L96 105 L100 151 Q90 158 80 151Z" opacity=".85"/>
+<!-- triceps / forearms -->
+<path fill="${color('팔')}" d="M44 88 Q51 84 58 91 L55 111 Q51 121 45 130 L37 125 L39 108Z M136 88 Q129 84 122 91 L125 111 Q129 121 135 130 L143 125 L141 108Z"/><path fill="${color('팔')}" d="M38 130 Q45 127 51 134 L48 166 Q44 176 37 174 L33 164Z M142 130 Q135 127 129 134 L132 166 Q136 176 143 174 L147 164Z"/>
+<!-- glutes -->
+<path fill="${color('하체')}" d="M58 181 Q72 176 89 185 L87 211 Q79 224 67 220 Q56 211 55 197Z M122 181 Q108 176 91 185 L93 211 Q101 224 113 220 Q124 211 125 197Z"/>
+<!-- hamstrings -->
+<path fill="${color('하체')}" d="M59 220 Q71 224 86 216 L82 253 Q75 265 64 261 Q57 248 57 235Z M121 220 Q109 224 94 216 L98 253 Q105 265 116 261 Q123 248 123 235Z"/>
+<!-- calves -->
+<path fill="${color('하체')}" d="M58 264 Q67 267 76 265 L73 302 Q70 316 65 322 L56 319 Q54 302 55 286Z M122 264 Q113 267 104 265 L107 302 Q110 316 115 322 L124 319 Q126 302 125 286Z"/>
+</g>`;
+return `<svg class="bodymap" viewBox="0 0 180 335" role="img" aria-label="${back?'후면':'전면'} 근육도">${common}${back?rear:front}<path d="M90 57 L90 178" stroke="#cbd1d9" stroke-width=".8" opacity=".55"/></svg>`;
+};
+return `<h2>주간 근육 사용량</h2><div class="card"><b>이번 주</b> <span class="muted">월요일부터 현재까지 · ${start} 시작</span><p class="muted">운동 기록을 바탕으로 계산한 참고용 사용량이며, 실제 근육 성장 정도를 뜻하지 않습니다.</p><div class="musclegrid"><div><h3>정면</h3>${shape(false)}</div><div><h3>후면</h3>${shape(true)}</div></div><div class="legend"><span class="swatch" style="background:#e8ebef"></span>기록 없음 <span class="swatch" style="background:#f6c4ca"></span>낮음 <span class="swatch" style="background:#eb929c"></span>보통 <span class="swatch" style="background:#d34b60"></span>높음 <span class="swatch" style="background:#ad263d"></span>매우 높음</div></div><div class="card"><h3>부위별 이번 주 기록량</h3>${Object.entries(groups).map(([g,v])=>`<p class="between"><span>${g}</span><b>${Math.round(v).toLocaleString()} 점</b></p><div style="height:7px;background:#eee;border-radius:8px;margin-bottom:10px"><i style="display:block;height:7px;border-radius:8px;background:${color(g)};width:${v?Math.max(4,v/max*100):0}%"></i></div>`).join('')}<small>매주 월요일 기준으로 화면이 새로 집계됩니다. 과거 운동 기록은 삭제되지 않습니다.</small></div>`
+}
+function bodySave(){let w=+weight.value;if(!w)return alert('체중을 입력하세요');d.body.push({date:date.value,weight:w,waist:+waist.value||null});save();draw()}
+function backup(){let b=new Blob([JSON.stringify(d)],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='my-workout-backup.json';a.click();URL.revokeObjectURL(u)}
+function restore(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);if(!x.sessions||!x.routines||!x.ex)throw 0;if(confirm('현재 새 앱 데이터를 백업 내용으로 교체할까요?')){d=x;save();draw()}}catch{alert('올바른 백업 파일이 아닙니다')}};r.readAsText(f)}
+draw();
+</script></main></html>
