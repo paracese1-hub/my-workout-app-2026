@@ -56,4 +56,43 @@ function bodySave(){let w=+document.getElementById('weight').value,h=+document.g
 function backup(){let b=new Blob([JSON.stringify(d)],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='my-workout-backup.json';a.click();URL.revokeObjectURL(u)}
 function restore(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);if(!x.sessions||!x.routines||!x.ex)throw 0;if(confirm('현재 새 앱 데이터를 백업 내용으로 교체할까요?')){d=x;save();draw()}}catch{alert('올바른 백업 파일이 아닙니다')}};r.readAsText(f)}
 draw();
-</script></main></html>
+</script></main><!-- Muscle map vector data attribution
+Source: https://github.com/Jsplice/MuscleMap
+Adapted files: packages/assets/src/male-front.ts and male-back.ts
+MIT License
+
+Copyright (c) 2026 Jsplice / MuscleMap contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+Scope of this license:
+
+- The MIT license above covers EVERYTHING in this repository — all source code,
+  the SVG muscle path data in `packages/assets` (original traced vector work),
+  and the body photographs in `apps/playground/public/` (`bg-male-*.png`,
+  `bg-female-*.png`).
+- The body photographs were generated with OpenAI image tooling (from the
+  maintainer's own prompts) and manually edited. They are released under MIT as
+  well — free to use, copy, modify, and redistribute. See ASSET_PROVENANCE.md
+  for details.
+
+End of MuscleMap MIT license notice -->
+</html>
