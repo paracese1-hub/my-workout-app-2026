@@ -27,7 +27,27 @@ if(tab==='records')a.innerHTML=`<h2>운동 기록</h2>${d.sessions.slice().rever
 if(tab==='muscle')a.innerHTML=muscleView();
 if(tab==='body')a.innerHTML=`<h2>몸 관리</h2><div class="card"><label>측정일</label><input id="date" type="date" value="${new Date().toISOString().slice(0,10)}"><label>키(cm)</label><input id="height" type="number" step=".1" value="178"><label>체중(kg)</label><input id="weight" type="number" step=".1"><label>허리둘레(cm, 선택)</label><input id="waist" type="number" step=".1"><button onclick="bodySave()">측정 저장</button><p class="muted">BMI는 입력한 키와 체중으로 자동 계산됩니다.</p></div><div class="card"><h3>측정 기록</h3>${d.body.slice().reverse().map(x=>{let bmi=x.bmi||((x.weight/Math.pow((x.height||178)/100,2)).toFixed(1));return `<p>${x.date} · 체중 ${x.weight}kg · BMI ${bmi} · 허리 ${x.waist||'-'}cm</p>`}).join('')||'기록이 없습니다.'}</div>`;
 }
-function makeRoutine(old){let name=prompt('루틴 이름',old?.name||'새 루틴');if(name===null)return;let list=d.ex[d.mode],nums=prompt('운동 번호를 쉼표로 입력\n'+list.map((x,i)=>(i+1)+'. '+x[0]).join('\n'),old?old.items.map(x=>list.findIndex(y=>y[0]===x.name)+1).join(','):'');if(nums===null)return;let items=nums.split(',').map(n=>list[+n.trim()-1]).filter(Boolean).map(x=>{let p=old?.items.find(y=>y.name===x[0]);return {name:x[0],group:x[1],equipment:x[2]||'',sets:+(prompt(x[0]+' 세트 수',p?.sets||3)||3),reps:+(prompt(x[0]+' 반복 수',p?.reps||10)||10)}});if(!items.length)return alert('운동을 선택하세요');let r={id:old?.id||crypto.randomUUID(),name,mode:d.mode,items};d.routines=old?d.routines.map(x=>x.id===r.id?r:x):[...d.routines,r];save();draw()}
+function makeRoutine(old){
+let name=prompt('루틴 이름',old?.name||'새 루틴');if(name===null)return;
+let list=d.ex[d.mode],nums='';
+while(true){
+list=d.ex[d.mode];
+nums=prompt('사용할 운동 번호를 쉼표로 입력하세요. 여러 개 선택 가능\n\n'+list.map((x,i)=>(i+1)+'. '+x[0]+' ('+x[1]+')').join('\n')+'\n\n0. 목록에 없는 운동 직접 추가',old?old.items.map(x=>list.findIndex(y=>y[0]===x.name)+1).filter(n=>n>0).join(','): '');
+if(nums===null)return;
+if(nums.trim()==='0'){
+let exName=prompt('추가할 운동 이름');if(exName===null)continue;exName=exName.trim();if(!exName){alert('운동 이름을 입력하세요.');continue;}
+let groups=['가슴','등','어깨','팔','복근','하체'];let groupNo=prompt('운동 부위 선택\\n1. 가슴  2. 등  3. 어깨  4. 팔  5. 복근  6. 하체','1');if(groupNo===null)continue;let group=groups[Number(groupNo)-1];if(!group){alert('1~6 중에서 선택하세요.');continue;}
+let equipment=prompt('사용 기구 (예: 덤벨, 바벨, 케이블, 머신, 맨몸)','');if(equipment===null)continue;
+let exists=d.ex[d.mode].some(x=>x[0].toLowerCase()===exName.toLowerCase());if(exists){alert('이미 등록된 운동입니다. 목록에서 선택하세요.');continue;}
+d.ex[d.mode].push([exName,group,equipment.trim(),true]);save();alert('운동을 추가했습니다. 목록에서 선택할 수 있습니다.');continue;
+}
+break;
+}
+let selected=nums.split(',').map(n=>list[Number(n.trim())-1]).filter(Boolean);
+let items=selected.map(x=>{let p=old?.items.find(y=>y.name===x[0]);let sets=prompt(x[0]+' 세트 수',p?.sets||3);if(sets===null)return null;let reps=prompt(x[0]+' 반복 수',p?.reps||10);if(reps===null)return null;return {name:x[0],group:x[1],equipment:x[2]||'',sets:Math.max(1,Number(sets)||3),reps:Math.max(1,Number(reps)||10)};}).filter(Boolean);
+if(!items.length)return alert('운동을 선택하세요.');
+let r={id:old?.id||crypto.randomUUID(),name,mode:d.mode,items};d.routines=old?d.routines.map(x=>x.id===r.id?r:x):[...d.routines,r];save();draw();
+}
 function edit(id){makeRoutine(d.routines.find(x=>x.id===id))}function del(id){if(confirm('루틴을 삭제할까요?')){d.routines=d.routines.filter(x=>x.id!==id);save();draw()}}
 function start(id){let r=d.routines.find(x=>x.id===id);session={name:r.name,items:r.items.map(x=>({...x,setsData:Array.from({length:x.sets},()=>({w:0,r:x.reps,done:false}))}))};tab='work';draw()}
 function addExercise(){
