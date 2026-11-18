@@ -96,7 +96,7 @@ return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.
 }
 function muscleView(){
 const start=weekStart(),volume={가슴:0,등:0,어깨:0,팔:0,복근:0,하체:0};
-(d.sessions||[]).filter(s=>s.date>=start).forEach(s=>(s.items||[]).forEach(it=>{const g=it.group;if(!(g in volume))return;const sets=it.setsData||[];const reps=sets.reduce((a,x)=>a+(Number(x.w)||0)*(Number(x.r)||0),0);const done=sets.filter(x=>x.done).length;volume[g]+=Math.max(reps,done*10)}));
+(d.sessions||[]).filter(s=>s.date>=start).forEach(s=>(s.items||[]).forEach(it=>{const g=it.group;if(!(g in volume))return;const sets=it.setsData||[];const reps=sets.reduce((a,x)=>{const w=Number(x.w)||0,r=Number(x.r)||0;return a+(w>0?w*r:(r>0?10:0))},0);const done=sets.filter(x=>x.done).length;volume[g]+=Math.max(reps,done*10)}));
 const max=Math.max(1,...Object.values(volume)),palette=['#e8edf3','#f8dce1','#f2aab7','#e66b83','#c93656','#9f173b'];
 const level=g=>volume[g]<=0?0:Math.max(1,Math.min(5,Math.ceil(Math.sqrt(volume[g]/max)*5))),shade=g=>palette[level(g)];
 const groupFor=id=>Object.keys(ANATOMY_DATA.groups).find(g=>ANATOMY_DATA.groups[g].includes(id));
