@@ -73,7 +73,17 @@ function recordEditor(){
  return `<div class="card"><h3>운동 기록 수정</h3><label>운동 날짜</label><input type="date" value="${esc(s.date||'')}" onchange="recordDraft.date=this.value">
  <p class="muted">날짜와 세트별 중량·횟수를 수정하고, 빠뜨린 세트는 추가하거나 잘못 입력한 세트는 삭제할 수 있습니다. 중량이 없는 운동은 0kg 그대로 두면 됩니다.</p>
  ${(s.items||[]).map((item,i)=>`<div class="card"><b>${esc(item.name)}</b>${(item.setsData||[]).map((set,j)=>`<div class="record-set"><span>${j+1}세트</span><input aria-label="중량 kg" type="number" min="0" step="0.5" value="${Number(set.w)||0}" onchange="recordDraft.items[${i}].setsData[${j}].w=Number(this.value)"><input aria-label="횟수" type="number" min="0" step="1" value="${Number(set.r)||0}" onchange="recordDraft.items[${i}].setsData[${j}].r=Number(this.value)"><button type="button" class="alt" aria-label="세트 삭제" onclick="removeRecordSet(${i},${j})">삭제</button></div>`).join('')}<button type="button" class="alt" onclick="addRecordSet(${i})">＋ 세트 추가</button></div>`).join('')}
+ <div class="card"><b>운동 항목 추가</b><input id="record-new-exercise" type="text" placeholder="추가할 운동 이름 (예: 레그레이즈)"><label>운동 부위</label><select id="record-new-group"><option value="가슴">가슴</option><option value="등">등</option><option value="어깨">어깨</option><option value="팔">팔</option><option value="복근">복근</option><option value="하체">하체</option></select><button type="button" onclick="addRecordExercise()">＋ 운동 항목 추가</button><small>추가 후 기본 3세트(0kg × 10회)로 생성되며, 세트와 횟수는 자유롭게 수정할 수 있습니다.</small></div>
  <button onclick="saveRecordEdit()">수정 저장</button><button class="alt" onclick="cancelRecordEdit()">취소</button></div>`;
+}
+function addRecordExercise(){
+ const input=document.getElementById('record-new-exercise');
+ const name=(input?.value||'').trim();
+ const group=document.getElementById('record-new-group')?.value||'가슴';
+ if(!name)return alert('추가할 운동 이름을 입력하세요.');
+ if((recordDraft.items||[]).some(x=>String(x.name).trim().toLowerCase()===name.toLowerCase()))return alert('이미 이 기록에 같은 운동 항목이 있습니다.');
+ recordDraft.items.push({name,group,equipment:'',setsData:Array.from({length:3},()=>({w:0,r:10,done:false}))});
+ draw();
 }
 function addRecordSet(itemIndex){
  const item=recordDraft?.items?.[itemIndex];if(!item)return;
