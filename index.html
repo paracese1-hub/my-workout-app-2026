@@ -77,7 +77,7 @@ function recordEditor(){
 }
 function saveRecordEdit(){
  if(!recordDraft||editingRecord===null)return;
- if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(recordDraft.date||''))return alert('운동 날짜를 확인하세요.');
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(recordDraft.date||''))return alert('운동 날짜를 확인하세요.');
  for(const item of recordDraft.items||[])for(const set of item.setsData||[]){
   if(!Number.isFinite(Number(set.w))||Number(set.w)<0||!Number.isFinite(Number(set.r))||Number(set.r)<0)return alert('중량과 횟수는 0 이상의 숫자로 입력하세요.');
  }
