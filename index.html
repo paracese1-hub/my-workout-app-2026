@@ -15,7 +15,7 @@ const base={mode:'home',routines:[],sessions:[],body:[],ex:{
 home:[['덤벨 벤치프레스','가슴'],['인클라인 덤벨프레스','가슴'],['원암 덤벨로우','등'],['덤벨 스쿼트','하체'],['덤벨 루마니안 데드리프트','하체'],['덤벨 숄더프레스','어깨'],['사이드 레터럴 레이즈','어깨'],['덤벨 컬','팔'],['오버헤드 트라이셉스 익스텐션','팔'],['크런치','복근']],
 gym:[['바벨 벤치프레스','가슴'],['케이블 플라이','가슴'],['랫풀다운','등'],['시티드 케이블로우','등'],['레그프레스','하체'],['레그컬','하체'],['머신 숄더프레스','어깨'],['케이블 푸시다운','팔']]}};
 let d;try{d={...base,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{d=structuredClone(base)}
-let tab='home',session=null;
+let tab='home',session=null,editingRecord=null,recordDraft=null;
 let workoutDate=(()=>{const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`})();
 function setWorkoutDate(v){workoutDate=v;if(session)session.date=v;}
 const save=()=>localStorage.setItem(KEY,JSON.stringify(d));
@@ -26,7 +26,7 @@ if(tab==='home')a.innerHTML=`<div class="card"><h2>오늘 운동</h2><p class="m
 if(tab==='routine')a.innerHTML=`<h2>내 루틴 · ${d.mode==='home'?'홈트':'헬스장'}</h2><button onclick="mode('home')">홈트</button><button onclick="mode('gym')">헬스장</button><button onclick="makeRoutine()">＋ 루틴 만들기</button>${rs.map(r=>`<div class="card"><b>${esc(r.name)}</b><p class="muted">${r.items.map(x=>esc(x.name)+' '+x.sets+'세트×'+x.reps+'회').join('<br>')}</p><button onclick="start('${r.id}')">시작</button><button class="alt" onclick="edit('${r.id}')">수정</button><button class="alt" onclick="del('${r.id}')">삭제</button></div>`).join('')||'<div class="card">저장된 루틴이 없습니다.</div>'}`;
 if(tab==='work')a.innerHTML=session?`<h2>${esc(session.name)}</h2>${session.items.map((x,i)=>`<div class="card"><b>${esc(x.name)}</b>${x.setsData.map((s,j)=>`<div class="set">${j+1}세트<input type="number" value="${s.w}" placeholder="kg" onchange="session.items[${i}].setsData[${j}].w=+this.value"><input type="number" value="${s.r}" placeholder="회" onchange="session.items[${i}].setsData[${j}].r=+this.value"><input type="checkbox" ${s.done?'checked':''} onchange="session.items[${i}].setsData[${j}].done=this.checked"></div>`).join('')}<button class="alt" onclick="addSet(${i})">세트 추가</button></div>`).join('')}<div class="card"><textarea id="memo" placeholder="운동 메모"></textarea><button onclick="finish()">기록 저장</button></div>`:`<h2>운동하기</h2><div class="card"><button onclick="mode('home')">홈트</button><button onclick="mode('gym')">헬스장</button><h3>저장 루틴</h3><select id="sel"><option value="">루틴 선택</option>${rs.map(r=>`<option value="${r.id}">${esc(r.name)}</option>`).join('')}</select><button onclick="let r=d.routines.find(x=>x.id===sel.value);if(r)start(r.id);else alert('루틴을 선택하세요')">선택 루틴 시작</button><hr><h3>운동 직접 구성</h3><button class="alt" onclick="addExercise()">＋ 내 운동 추가</button><p class="muted">목록에 없는 운동도 이름과 운동 부위를 직접 등록할 수 있습니다.</p><div class="exercise-picks">${d.ex[d.mode].map((x,i)=>`<label><input type="checkbox" class="pick" value="${i}"> ${esc(x[0])} <small>· ${esc(x[1])}${x[2]?' · '+esc(x[2]):''}</small></label>`).join('')}</div><button class="free-start-btn" onclick="freeStart()">선택 운동 시작</button></div>`;
 if(tab==='work')a.innerHTML='<div class="card"><label>운동 날짜</label><input id="workoutDate" type="date" value="'+(session?.date||workoutDate)+'" onchange="setWorkoutDate(this.value)"><small>선택한 날짜로 운동 기록이 저장됩니다.</small></div>'+a.innerHTML;
-if(tab==='records')a.innerHTML=`<h2>운동 기록</h2>${d.sessions.slice().reverse().map((s,i)=>`<div class="card"><b>${esc(s.name)}</b><p class="muted">${s.date} · ${s.items.map(x=>esc(x.name)).join(', ')}</p>${s.items.map(x=>`<small>${esc(x.name)}: ${x.setsData.map(y=>y.w+'kg×'+y.r+(y.done?' ✓':'')).join(' / ')}</small><br>`).join('')}<p><button class="alt" onclick="editRecord(${d.sessions.length-1-i})">기록 수정</button><button class="alt" onclick="deleteRecord(${d.sessions.length-1-i})">기록 삭제</button></p></div>`).join('')||'<div class="card">아직 기록이 없습니다.</div>'}<div class="card"><button onclick="backup()">백업 파일 저장</button><label>백업 불러오기<input type="file" accept="application/json" onchange="restore(event)"></label></div>`;
+if(tab==='records')a.innerHTML=`<h2>운동 기록</h2>${d.sessions.slice().reverse().map((s,i)=>{const idx=d.sessions.length-1-i;return editingRecord===idx?recordEditor():`<div class="card"><b>${esc(s.name)}</b><p class="muted">${s.date} · ${s.items.map(x=>esc(x.name)).join(', ')}</p>${s.items.map(x=>`<small>${esc(x.name)}: ${(x.setsData||[]).map(y=>(Number(y.w)||0)+'kg×'+(Number(y.r)||0)+(y.done?' ✓':'')).join(' / ')}</small><br>`).join('')}<p><button class="alt" onclick="editRecord(${idx})">기록 수정</button><button class="alt" onclick="deleteRecord(${idx})">기록 삭제</button></p></div>`}).join('')||'<div class="card">아직 기록이 없습니다.</div>'}<div class="card"><button onclick="backup()">백업 파일 저장</button><label>백업 불러오기<input type="file" accept="application/json" onchange="restore(event)"></label></div>`;
 if(tab==='muscle')a.innerHTML=muscleView();
 if(tab==='body')a.innerHTML=`<h2>몸 관리</h2><div class="card"><label>측정일</label><input id="date" type="date" value="${new Date().toISOString().slice(0,10)}"><label>키(cm)</label><input id="height" type="number" step=".1" value="178"><label>체중(kg)</label><input id="weight" type="number" step=".1"><label>허리둘레(cm, 선택)</label><input id="waist" type="number" step=".1"><button onclick="bodySave()">측정 저장</button><p class="muted">BMI는 입력한 키와 체중으로 자동 계산됩니다.</p></div><div class="card"><h3>측정 기록</h3>${d.body.slice().reverse().map(x=>{let bmi=x.bmi||((x.weight/Math.pow((x.height||178)/100,2)).toFixed(1));return `<p>${x.date} · 체중 ${x.weight}kg · BMI ${bmi} · 허리 ${x.waist||'-'}cm</p>`}).join('')||'기록이 없습니다.'}</div>`;
 }
@@ -66,25 +66,24 @@ function finish(){d.sessions.push({date:session.date||workoutDate,mode:d.mode,na
 
 function editRecord(index){
  const original=d.sessions[index];if(!original)return;
- const s=structuredClone(original);
- const ask=(label,value)=>prompt(label,value??'');
- let v=ask('운동 날짜 (YYYY-MM-DD)',s.date||workoutDate);if(v===null)return;if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(v))return alert('날짜 형식을 확인하세요. 예: 2026-11-17');s.date=v;
- v=ask('운동 기록 이름',s.name||'운동');if(v===null)return;s.name=v.trim()||'운동';
- v=ask('운동 메모',s.memo||'');if(v===null)return;s.memo=v;
- for(let i=0;i<(s.items||[]).length;i++){
-  const item=s.items[i];
-  v=ask((i+1)+'번째 운동 이름',item.name);if(v===null)return;item.name=v.trim()||item.name;
-  for(let j=0;j<(item.setsData||[]).length;j++){
-   const set=item.setsData[j];
-   v=ask(item.name+' · '+(j+1)+'세트 중량(kg)',String(set.w??0));if(v===null)return;
-   const w=Number(v);if(!Number.isFinite(w)||w<0)return alert('중량은 0 이상의 숫자로 입력하세요.');set.w=w;
-   v=ask(item.name+' · '+(j+1)+'세트 횟수',String(set.r??0));if(v===null)return;
-   const reps=Number(v);if(!Number.isFinite(reps)||reps<0)return alert('횟수는 0 이상의 숫자로 입력하세요.');set.r=reps;
-   v=ask(item.name+' · '+(j+1)+'세트 완료 여부 (y/n)',set.done?'y':'n');if(v===null)return;set.done=/^(y|yes|ㅇ|예)$/i.test(v.trim());
-  }
- }
- d.sessions[index]=s;save();draw();alert('운동 기록을 수정했습니다.');
+ editingRecord=index;recordDraft=structuredClone(original);draw();
 }
+function recordEditor(){
+ const s=recordDraft;
+ return `<div class="card"><h3>운동 기록 수정</h3><label>운동 날짜</label><input type="date" value="${esc(s.date||'')}" onchange="recordDraft.date=this.value">
+ <p class="muted">날짜와 각 세트의 중량·횟수를 수정할 수 있습니다. 중량이 없는 운동은 0kg 그대로 두면 됩니다.</p>
+ ${(s.items||[]).map((item,i)=>`<div class="card"><b>${esc(item.name)}</b>${(item.setsData||[]).map((set,j)=>`<div class="set"><span>${j+1}세트</span><input aria-label="중량 kg" type="number" min="0" step="0.5" value="${Number(set.w)||0}" onchange="recordDraft.items[${i}].setsData[${j}].w=Number(this.value)"><input aria-label="횟수" type="number" min="0" step="1" value="${Number(set.r)||0}" onchange="recordDraft.items[${i}].setsData[${j}].r=Number(this.value)"><span class="muted">kg / 회</span></div>`).join('')}</div>`).join('')}
+ <button onclick="saveRecordEdit()">수정 저장</button><button class="alt" onclick="cancelRecordEdit()">취소</button></div>`;
+}
+function saveRecordEdit(){
+ if(!recordDraft||editingRecord===null)return;
+ if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(recordDraft.date||''))return alert('운동 날짜를 확인하세요.');
+ for(const item of recordDraft.items||[])for(const set of item.setsData||[]){
+  if(!Number.isFinite(Number(set.w))||Number(set.w)<0||!Number.isFinite(Number(set.r))||Number(set.r)<0)return alert('중량과 횟수는 0 이상의 숫자로 입력하세요.');
+ }
+ d.sessions[editingRecord]=recordDraft;save();editingRecord=null;recordDraft=null;draw();alert('운동 날짜와 세트별 중량·횟수를 수정했습니다.');
+}
+function cancelRecordEdit(){editingRecord=null;recordDraft=null;draw()}
 function deleteRecord(index){
  if(!d.sessions[index])return;
  if(!confirm('이 운동 기록 전체를 삭제할까요? 삭제 후에는 앱 안에서 되돌릴 수 없습니다.'))return;
